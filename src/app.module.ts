@@ -9,6 +9,7 @@ import { ProjectModule } from './project/project.module';
 import { AgentModule } from './agent/agent.module';
 import { SkillsModule } from './skills/skills.module';
 import { McpModule } from './mcp/mcp.module';
+import { ModelModule } from './model/model.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { McpModule } from './mcp/mcp.module';
     AgentModule,
     SkillsModule,
     McpModule,
+    ModelModule,
   ],
   controllers: [AppController],
   providers: [AppService],

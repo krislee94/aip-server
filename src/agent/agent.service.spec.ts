@@ -4,6 +4,11 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AgentRepository } from './agent.repository';
 import { AgentService } from './agent.service';
 import {
+  LlmModel,
+  ModelStatus,
+  ModelType,
+} from '../model/entities/model.entity';
+import {
   Agent,
   AgentRunMode,
   AgentStatus,
@@ -18,6 +23,7 @@ type MockAgentRepository = {
   findAllByOwner: jest.Mock;
   findByCode: jest.Mock;
   findOneByIdAndOwner: jest.Mock;
+  findOwnedModel: jest.Mock;
   findOwnedProject: jest.Mock;
   saveAgentRelation: jest.Mock;
   save: jest.Mock;
@@ -30,6 +36,7 @@ describe('AgentService', () => {
   const userId = '11111111-1111-4111-8111-111111111111';
   const projectId = '22222222-2222-4222-8222-222222222222';
   const now = new Date('2026-07-04T00:00:00.000Z');
+  const modelId = '66666666-6666-4666-8666-666666666666';
 
   const createAgent = (overrides: Partial<Agent> = {}): Agent => ({
     agentCode: 'support_agent',
@@ -77,6 +84,29 @@ describe('AgentService', () => {
     ...overrides,
   });
 
+  const createModel = (overrides: Partial<LlmModel> = {}): LlmModel => ({
+    apiKeyRef: 'openai-key',
+    baseUrl: 'https://api.openai.com/v1',
+    contextWindow: 128000,
+    createdAt: now,
+    createdBy: userId,
+    id: modelId,
+    isDeleted: false,
+    modelCode: 'gpt_4_1',
+    modelName: 'GPT-4.1',
+    modelType: ModelType.Chat,
+    priceInput: '0.010000',
+    priceOutput: '0.030000',
+    secretKey: '',
+    status: ModelStatus.Enabled,
+    supportFunctionCall: true,
+    supportStream: true,
+    tenantId: userId,
+    updatedAt: now,
+    vendor: 'openai',
+    ...overrides,
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -90,6 +120,7 @@ describe('AgentService', () => {
             findAllByOwner: jest.fn(),
             findByCode: jest.fn(),
             findOneByIdAndOwner: jest.fn(),
+            findOwnedModel: jest.fn(),
             findOwnedProject: jest.fn(),
             saveAgentRelation: jest.fn(),
             save: jest.fn(),
@@ -133,6 +164,44 @@ describe('AgentService', () => {
     expect(repository.findOwnedProject).toHaveBeenCalledWith(projectId, userId);
     expect(repository.create).toHaveBeenCalledWith(
       expect.objectContaining({ agentName: 'Support Agent', projectId }),
+      userId,
+      'support_agent',
+    );
+  });
+
+  it('binds an LLM model when creating an agent', async () => {
+    const model = createModel();
+    const agent = createAgent({
+      llmModel: model.modelCode,
+      llmModelId: model.id,
+    });
+
+    repository.findOwnedProject.mockResolvedValue({ id: projectId });
+    repository.findOwnedModel.mockResolvedValue(model);
+    repository.findByCode.mockResolvedValue(null);
+    repository.create.mockReturnValue(agent);
+    repository.save.mockResolvedValue(agent);
+
+    const result = await service.create(
+      {
+        agentCode: 'support_agent',
+        agentName: 'Support Agent',
+        llmModelId: model.id,
+        projectId,
+      },
+      userId,
+    );
+
+    expect(result).toMatchObject({
+      llmModel: 'gpt_4_1',
+      llmModelId: model.id,
+    });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmModel: model.modelCode,
+        llmModelId: model.id,
+        maxContextLength: model.contextWindow,
+      }),
       userId,
       'support_agent',
     );

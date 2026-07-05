@@ -8,7 +8,7 @@ export function BrandMark() {
       </div>
       <div>
         <strong>AIP Developer</strong>
-        <small>Agent control plane</small>
+        <small>Agent Control Plane</small>
       </div>
     </div>
   );

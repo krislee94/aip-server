@@ -14,10 +14,17 @@ export function AuthView({ app }: AuthViewProps) {
     <main className="auth-page">
       <section className="auth-visual" aria-label="AIP Developer">
         <BrandMark />
+
+        <div className="auth-copy">
+          <span>Agent knowledge workspace</span>
+          <h1>AIP Developer</h1>
+          <p>把项目、模型、Prompt、Skill 和 MCP 服务放进同一张配置图里管理。</p>
+        </div>
+
         <div className="command-board" aria-hidden="true">
           <div className="command-line">
             <span>$</span>
-            <code>agent graph inspect --project</code>
+            <code>agent graph inspect --project=current</code>
           </div>
           <div className="trace-grid">
             <span className="trace-node root" />
@@ -30,8 +37,8 @@ export function AuthView({ app }: AuthViewProps) {
           </div>
           <div className="command-meta">
             <span>projects</span>
+            <span>models</span>
             <span>agents</span>
-            <span>skills</span>
             <span>mcp</span>
           </div>
         </div>
@@ -59,7 +66,7 @@ export function AuthView({ app }: AuthViewProps) {
           <header>
             <p>Workspace access</p>
             <h1>{title}</h1>
-            <span>管理项目、智能体、Prompt、Skill 与 MCP 挂载关系。</span>
+            <span>进入配置工作台，继续编排你的 Agent 运行资源。</span>
           </header>
 
           <form onSubmit={app.handleAuthSubmit}>
@@ -112,7 +119,7 @@ export function AuthView({ app }: AuthViewProps) {
 
           <div className="status-bar" aria-live="polite">
             <span className={cx('status-dot', app.message && 'online')} />
-            <span>{app.message || '准备就绪'}</span>
+            <span>{app.message || '等待认证'}</span>
           </div>
         </div>
       </section>

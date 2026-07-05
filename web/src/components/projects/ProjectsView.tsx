@@ -19,10 +19,16 @@ export function ProjectsView({ app }: ProjectsViewProps) {
       <PageHeader
         eyebrow="Projects"
         title="项目管理"
-        subtitle="项目是智能体编排的边界，先把业务场景分清楚。"
+        subtitle="项目是 Agent 编排的边界，先把业务场景分清楚。"
       />
 
-      <section className="management-layout">
+      <section className="toolbar-strip" aria-label="项目筛选状态">
+        <span>全部项目 {app.projects.length}</span>
+        <span>进行中 {app.activeProjectsCount}</span>
+        <span>当前 {app.selectedProject?.name ?? '未选择'}</span>
+      </section>
+
+      <section className="management-layout section-gap">
         <form className="panel-form" onSubmit={app.handleProjectSubmit}>
           <h2>{app.editingProjectId ? '编辑项目' : '新建项目'}</h2>
           <label>

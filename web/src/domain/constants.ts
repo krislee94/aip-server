@@ -9,6 +9,9 @@ import type {
   McpForm,
   McpStatus,
   McpTransportType,
+  ModelForm,
+  ModelStatus,
+  ModelType,
   ProjectForm,
   ProjectStatus,
   PromptForm,
@@ -16,6 +19,7 @@ import type {
   SkillForm,
   SkillStatus,
   SkillType,
+  View,
 } from './types';
 
 export const tokenStorageKey = 'platform_access_token';
@@ -32,11 +36,29 @@ export const emptyAgentForm: AgentForm = {
   agentName: '',
   agentType: 'standalone',
   llmModel: '',
+  llmModelId: '',
   maxContextLength: 8000,
   runMode: 'sync',
   status: 'draft',
   supportsSubAgents: false,
   timeoutSeconds: 30,
+};
+
+export const emptyModelForm: ModelForm = {
+  apiKeyRef: '',
+  baseUrl: '',
+  contextWindow: 8192,
+  defaultParams: '',
+  modelCode: '',
+  modelName: '',
+  modelType: 1,
+  priceInput: '0',
+  priceOutput: '0',
+  secretKey: '',
+  status: 1,
+  supportFunctionCall: false,
+  supportStream: true,
+  vendor: 'openai',
 };
 
 export const emptyPromptForm: PromptForm = {
@@ -82,6 +104,16 @@ export const emptyAgentRelationForm: AgentRelationForm = {
   subAgentId: '',
 };
 
+export const appNavItems: Array<{
+  code: string;
+  label: string;
+  view: Extract<View, 'home' | 'models' | 'projects'>;
+}> = [
+  { code: '01', label: '首页总览', view: 'home' },
+  { code: '02', label: '项目管理', view: 'projects' },
+  { code: '03', label: '模型中心', view: 'models' },
+];
+
 export const projectStatusLabels: Record<ProjectStatus, string> = {
   active: '进行中',
   archived: '已归档',
@@ -124,6 +156,19 @@ export const mcpTransportLabels: Record<McpTransportType, string> = {
   http: 'HTTP',
   sse: 'SSE',
   stdio: 'stdio',
+};
+
+export const modelTypeLabels: Record<ModelType, string> = {
+  1: '对话 LLM',
+  2: '向量 Embedding',
+  3: '图像生成',
+  4: '语音',
+};
+
+export const modelStatusLabels: Record<ModelStatus, string> = {
+  0: '禁用',
+  1: '正常',
+  2: '维护中',
 };
 
 export const detailTabLabels: Record<DetailTab, string> = {

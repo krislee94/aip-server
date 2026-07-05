@@ -1,7 +1,10 @@
+import { appNavItems } from '../../domain/constants';
 import type { PlatformApp } from '../../hooks/usePlatformApp';
 import { cx } from '../../lib/classNames';
 import { AgentWorkspace } from '../agents/AgentWorkspace';
 import { BrandMark } from '../common/BrandMark';
+import { WorkspaceTopbar } from '../common/WorkspaceTopbar';
+import { ModelsView } from '../models/ModelsView';
 import { HomeView } from '../projects/HomeView';
 import { ProjectsView } from '../projects/ProjectsView';
 
@@ -16,20 +19,17 @@ export function AppShell({ app }: AppShellProps) {
         <BrandMark />
 
         <nav className="side-menu">
-          <button
-            type="button"
-            className={cx(app.view === 'home' && 'active')}
-            onClick={() => app.setView('home')}
-          >
-            首页
-          </button>
-          <button
-            type="button"
-            className={cx(app.view === 'projects' && 'active')}
-            onClick={() => app.setView('projects')}
-          >
-            项目
-          </button>
+          {appNavItems.map((item) => (
+            <button
+              type="button"
+              className={cx(app.view === item.view && 'active')}
+              key={item.view}
+              onClick={() => app.setView(item.view)}
+            >
+              <span aria-hidden="true">{item.code}</span>
+              {item.label}
+            </button>
+          ))}
         </nav>
 
         <div className="sidebar-user">
@@ -41,10 +41,14 @@ export function AppShell({ app }: AppShellProps) {
         </div>
       </aside>
 
-      <section className="workspace">
-        {app.view === 'home' ? <HomeView app={app} /> : null}
-        {app.view === 'projects' ? <ProjectsView app={app} /> : null}
-        {app.view === 'agent' ? <AgentWorkspace app={app} /> : null}
+      <section className="workspace-shell">
+        <WorkspaceTopbar app={app} />
+        <section className="workspace">
+          {app.view === 'home' ? <HomeView app={app} /> : null}
+          {app.view === 'projects' ? <ProjectsView app={app} /> : null}
+          {app.view === 'models' ? <ModelsView app={app} /> : null}
+          {app.view === 'agent' ? <AgentWorkspace app={app} /> : null}
+        </section>
       </section>
     </main>
   );

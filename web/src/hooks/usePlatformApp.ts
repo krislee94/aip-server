@@ -5,6 +5,7 @@ import {
   emptyAgentRelationForm,
   emptyMcpBindingForm,
   emptyMcpForm,
+  emptyModelForm,
   emptyProjectForm,
   emptyPromptForm,
   emptySkillBindingForm,
@@ -21,6 +22,7 @@ import type {
   AuthResponse,
   AuthUser,
   DetailTab,
+  LlmModel,
   McpServer,
   Project,
   Skill,
@@ -30,6 +32,14 @@ import { authHeaders, getErrorMessage, requestJson } from '../lib/api';
 
 function optional(value: string): string | undefined {
   return value || undefined;
+}
+
+function optionalNumber(value: string): number | undefined {
+  if (value.trim() === '') {
+    return undefined;
+  }
+
+  return Number(value);
 }
 
 export function usePlatformApp() {
@@ -54,6 +64,12 @@ export function usePlatformApp() {
   const [projectMessage, setProjectMessage] = useState('');
   const [isProjectLoading, setIsProjectLoading] = useState(false);
   const [isProjectSaving, setIsProjectSaving] = useState(false);
+
+  const [models, setModels] = useState<LlmModel[]>([]);
+  const [modelForm, setModelForm] = useState(emptyModelForm);
+  const [editingModelId, setEditingModelId] = useState('');
+  const [modelMessage, setModelMessage] = useState('');
+  const [isModelLoading, setIsModelLoading] = useState(false);
 
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState('');
@@ -113,6 +129,10 @@ export function usePlatformApp() {
       ).length,
     [agents],
   );
+  const enabledModelsCount = useMemo(
+    () => models.filter((model) => model.status === 1).length,
+    [models],
+  );
 
   const loadProjects = useCallback(
     async (accessToken = token): Promise<Project[]> => {
@@ -134,6 +154,31 @@ export function usePlatformApp() {
         return [];
       } finally {
         setIsProjectLoading(false);
+      }
+    },
+    [token],
+  );
+
+  const loadModels = useCallback(
+    async (accessToken = token): Promise<LlmModel[]> => {
+      if (!accessToken) {
+        setModels([]);
+        return [];
+      }
+
+      setIsModelLoading(true);
+
+      try {
+        const data = await requestJson<LlmModel[]>('/models', {
+          headers: authHeaders(accessToken),
+        });
+        setModels(data);
+        return data;
+      } catch (error) {
+        setModelMessage(getErrorMessage(error));
+        return [];
+      } finally {
+        setIsModelLoading(false);
       }
     },
     [token],
@@ -302,6 +347,7 @@ export function usePlatformApp() {
     if (!token) {
       setUser(null);
       setProjects([]);
+      setModels([]);
       setAgents([]);
       setIsCheckingSession(false);
       return;
@@ -310,6 +356,7 @@ export function usePlatformApp() {
     let isActive = true;
     setIsCheckingSession(true);
     setIsProjectLoading(true);
+    setIsModelLoading(true);
 
     void Promise.all([
       requestJson<AuthUser>('/auth/me', {
@@ -318,14 +365,18 @@ export function usePlatformApp() {
       requestJson<Project[]>('/projects', {
         headers: authHeaders(token),
       }),
+      requestJson<LlmModel[]>('/models', {
+        headers: authHeaders(token),
+      }),
     ])
-      .then(([currentUser, projectData]) => {
+      .then(([currentUser, projectData, modelData]) => {
         if (!isActive) {
           return;
         }
 
         setUser(currentUser);
         setProjects(projectData);
+        setModels(modelData);
         setMessage('会话已恢复');
       })
       .catch(() => {
@@ -337,6 +388,7 @@ export function usePlatformApp() {
         setToken('');
         setUser(null);
         setProjects([]);
+        setModels([]);
         setAgents([]);
       })
       .finally(() => {
@@ -345,6 +397,7 @@ export function usePlatformApp() {
         }
 
         setIsProjectLoading(false);
+        setIsModelLoading(false);
         setIsCheckingSession(false);
       });
 
@@ -365,12 +418,21 @@ export function usePlatformApp() {
   }, [agents, selectedAgentId]);
 
   useEffect(() => {
-    if (!token || view !== 'agent') {
+    if (!token || (view !== 'agent' && view !== 'models')) {
       return;
     }
 
-    void Promise.all([loadSkills(token), loadMcpServers(token)]);
-  }, [loadMcpServers, loadSkills, token, view]);
+    if (view === 'models') {
+      void loadModels(token);
+      return;
+    }
+
+    void Promise.all([
+      loadModels(token),
+      loadSkills(token),
+      loadMcpServers(token),
+    ]);
+  }, [loadMcpServers, loadModels, loadSkills, token, view]);
 
   useEffect(() => {
     if (!token || !selectedAgentId || !user) {
@@ -421,7 +483,10 @@ export function usePlatformApp() {
       setView('home');
       setMessage(authMode === 'login' ? '已登录' : '账号已创建');
       setPassword('');
-      await loadProjects(auth.accessToken);
+      await Promise.all([
+        loadProjects(auth.accessToken),
+        loadModels(auth.accessToken),
+      ]);
     } catch (error) {
       setMessage(getErrorMessage(error));
     } finally {
@@ -495,6 +560,66 @@ export function usePlatformApp() {
     }
   }
 
+  async function handleModelSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!token) {
+      return;
+    }
+
+    const isEditing = Boolean(editingModelId);
+    setModelMessage('');
+
+    try {
+      await requestJson<LlmModel>(
+        isEditing ? `/models/${editingModelId}` : '/models',
+        {
+          body: JSON.stringify({
+            apiKeyRef: optional(modelForm.apiKeyRef),
+            baseUrl: optional(modelForm.baseUrl),
+            contextWindow: modelForm.contextWindow,
+            defaultParams: optional(modelForm.defaultParams),
+            modelCode: optional(modelForm.modelCode),
+            modelName: modelForm.modelName,
+            modelType: modelForm.modelType,
+            priceInput: optionalNumber(modelForm.priceInput),
+            priceOutput: optionalNumber(modelForm.priceOutput),
+            secretKey: optional(modelForm.secretKey),
+            status: modelForm.status,
+            supportFunctionCall: modelForm.supportFunctionCall,
+            supportStream: modelForm.supportStream,
+            vendor: modelForm.vendor,
+          }),
+          headers: authHeaders(token),
+          method: isEditing ? 'PATCH' : 'POST',
+        },
+      );
+      await loadModels(token);
+      setModelForm(emptyModelForm);
+      setEditingModelId('');
+      setModelMessage(isEditing ? '模型已更新' : '模型已创建');
+    } catch (error) {
+      setModelMessage(getErrorMessage(error));
+    }
+  }
+
+  async function handleModelDelete(modelId: string) {
+    if (!token || !window.confirm('确认删除这个模型？')) {
+      return;
+    }
+
+    try {
+      await requestJson<void>(`/models/${modelId}`, {
+        headers: authHeaders(token),
+        method: 'DELETE',
+      });
+      await loadModels(token);
+      setModelMessage('模型已删除');
+    } catch (error) {
+      setModelMessage(getErrorMessage(error));
+    }
+  }
+
   async function handleAgentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -516,6 +641,7 @@ export function usePlatformApp() {
             agentName: agentForm.agentName,
             agentType: agentForm.agentType,
             llmModel: optional(agentForm.llmModel),
+            llmModelId: agentForm.llmModelId || null,
             maxContextLength: agentForm.maxContextLength,
             projectId: selectedProject.id,
             runMode: agentForm.runMode,
@@ -631,18 +757,21 @@ export function usePlatformApp() {
     setSkillMessage('');
 
     try {
-      await requestJson<Skill>(isEditing ? `/skills/${editingSkillId}` : '/skills', {
-        body: JSON.stringify({
-          invokeConfig: optional(skillForm.invokeConfig),
-          skillCode: optional(skillForm.skillCode),
-          skillDesc: optional(skillForm.skillDesc),
-          skillName: skillForm.skillName,
-          skillType: skillForm.skillType,
-          status: skillForm.status,
-        }),
-        headers: authHeaders(token),
-        method: isEditing ? 'PATCH' : 'POST',
-      });
+      await requestJson<Skill>(
+        isEditing ? `/skills/${editingSkillId}` : '/skills',
+        {
+          body: JSON.stringify({
+            invokeConfig: optional(skillForm.invokeConfig),
+            skillCode: optional(skillForm.skillCode),
+            skillDesc: optional(skillForm.skillDesc),
+            skillName: skillForm.skillName,
+            skillType: skillForm.skillType,
+            status: skillForm.status,
+          }),
+          headers: authHeaders(token),
+          method: isEditing ? 'PATCH' : 'POST',
+        },
+      );
       await loadSkills(token);
       setSkillForm(emptySkillForm);
       setEditingSkillId('');
@@ -721,19 +850,22 @@ export function usePlatformApp() {
     setMcpMessage('');
 
     try {
-      await requestJson<McpServer>(isEditing ? `/mcp/${editingMcpId}` : '/mcp', {
-        body: JSON.stringify({
-          endpoint: optional(mcpForm.endpoint),
-          mcpCode: optional(mcpForm.mcpCode),
-          mcpDesc: optional(mcpForm.mcpDesc),
-          mcpName: mcpForm.mcpName,
-          status: mcpForm.status,
-          toolList: optional(mcpForm.toolList),
-          transportType: mcpForm.transportType,
-        }),
-        headers: authHeaders(token),
-        method: isEditing ? 'PATCH' : 'POST',
-      });
+      await requestJson<McpServer>(
+        isEditing ? `/mcp/${editingMcpId}` : '/mcp',
+        {
+          body: JSON.stringify({
+            endpoint: optional(mcpForm.endpoint),
+            mcpCode: optional(mcpForm.mcpCode),
+            mcpDesc: optional(mcpForm.mcpDesc),
+            mcpName: mcpForm.mcpName,
+            status: mcpForm.status,
+            toolList: optional(mcpForm.toolList),
+            transportType: mcpForm.transportType,
+          }),
+          headers: authHeaders(token),
+          method: isEditing ? 'PATCH' : 'POST',
+        },
+      );
       await loadMcpServers(token);
       setMcpForm(emptyMcpForm);
       setEditingMcpId('');
@@ -875,6 +1007,27 @@ export function usePlatformApp() {
     void loadAgents(project.id, token);
   }
 
+  function handleModelEdit(model: LlmModel) {
+    setModelForm({
+      apiKeyRef: model.apiKeyRef,
+      baseUrl: model.baseUrl,
+      contextWindow: model.contextWindow,
+      defaultParams: model.defaultParams ?? '',
+      modelCode: model.modelCode,
+      modelName: model.modelName,
+      modelType: model.modelType,
+      priceInput: model.priceInput,
+      priceOutput: model.priceOutput,
+      secretKey: '',
+      status: model.status,
+      supportFunctionCall: model.supportFunctionCall,
+      supportStream: model.supportStream,
+      vendor: model.vendor,
+    });
+    setEditingModelId(model.id);
+    setView('models');
+  }
+
   function handleAgentEdit(agent: Agent) {
     setAgentForm({
       agentCode: agent.agentCode,
@@ -882,6 +1035,7 @@ export function usePlatformApp() {
       agentName: agent.agentName,
       agentType: agent.agentType,
       llmModel: agent.llmModel,
+      llmModelId: agent.llmModelId ?? '',
       maxContextLength: agent.maxContextLength,
       runMode: agent.runMode,
       status: agent.status,
@@ -935,6 +1089,7 @@ export function usePlatformApp() {
     setToken('');
     setUser(null);
     setProjects([]);
+    setModels([]);
     setAgents([]);
     setPrompts([]);
     setSkills([]);
@@ -945,11 +1100,13 @@ export function usePlatformApp() {
     setSelectedProjectId('');
     setSelectedAgentId('');
     setEditingProjectId('');
+    setEditingModelId('');
     setEditingAgentId('');
     setEditingPromptId('');
     setEditingSkillId('');
     setEditingMcpId('');
     setProjectForm(emptyProjectForm);
+    setModelForm(emptyModelForm);
     setAgentForm(emptyAgentForm);
     setPromptForm(emptyPromptForm);
     setSkillForm(emptySkillForm);
@@ -959,6 +1116,7 @@ export function usePlatformApp() {
     setAuthMode('login');
     setMessage('已退出');
     setProjectMessage('');
+    setModelMessage('');
     setAgentMessage('');
     setPromptMessage('');
     setSkillMessage('');
@@ -978,11 +1136,13 @@ export function usePlatformApp() {
     detailTab,
     editingAgentId,
     editingMcpId,
+    editingModelId,
     editingProjectId,
     editingPromptId,
     editingSkillId,
     email,
     enabledAgentsCount,
+    enabledModelsCount,
     handleAgentDelete,
     handleAgentEdit,
     handleAgentRelationBind,
@@ -995,6 +1155,9 @@ export function usePlatformApp() {
     handleMcpSubmit,
     handleMcpUnbind,
     handleModeChange,
+    handleModelDelete,
+    handleModelEdit,
+    handleModelSubmit,
     handleProjectDelete,
     handleProjectEdit,
     handleProjectOpen,
@@ -1011,6 +1174,7 @@ export function usePlatformApp() {
     isAgentLoading,
     isAgentSaving,
     isCheckingSession,
+    isModelLoading,
     isProjectLoading,
     isProjectSaving,
     isSubmitting,
@@ -1020,6 +1184,9 @@ export function usePlatformApp() {
     mcpMessage,
     mcpServers,
     message,
+    modelForm,
+    modelMessage,
+    models,
     name,
     password,
     projectForm,
@@ -1040,11 +1207,13 @@ export function usePlatformApp() {
     setEmail,
     setEditingAgentId,
     setEditingMcpId,
+    setEditingModelId,
     setEditingProjectId,
     setEditingPromptId,
     setEditingSkillId,
     setMcpBindingForm,
     setMcpForm,
+    setModelForm,
     setName,
     setPassword,
     setProjectForm,

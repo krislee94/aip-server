@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
   Matches,
   Max,
   MaxLength,
@@ -96,6 +97,12 @@ export class CreateAgentDto {
   @MaxLength(128)
   @Transform(({ value }: { value: unknown }) => trimOptionalString(value))
   llmModel?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID('4')
+  @Transform(({ value }: { value: unknown }) => trimOptionalString(value))
+  llmModelId?: string | null;
 
   @IsOptional()
   @IsString()

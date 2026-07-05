@@ -22,6 +22,7 @@ import { UpdateAgentPromptDto } from './dto/update-agent-prompt.dto';
 import { UpdateAgentRelationDto } from './dto/update-agent-relation.dto';
 import { UpdateAgentSkillBindingDto } from './dto/update-agent-skill-binding.dto';
 import { UpdateAgentDto } from './dto/update-agent.dto';
+import { LlmModel } from '../model/entities/model.entity';
 
 @Injectable()
 export class AgentService {
@@ -32,6 +33,10 @@ export class AgentService {
     creator: string,
   ): Promise<AgentResponseDto> {
     await this.ensureOwnedProject(createAgentDto.projectId, creator);
+    const model = await this.resolveOwnedModel(
+      createAgentDto.llmModelId,
+      creator,
+    );
 
     const agentCode =
       createAgentDto.agentCode ??
@@ -39,11 +44,14 @@ export class AgentService {
     await this.ensureUniqueCode(creator, agentCode);
 
     const agent = this.agentRepository.create(
-      createAgentDto,
+      this.withModelDefaults(createAgentDto, model),
       creator,
       agentCode,
     );
-    return new AgentResponseDto(await this.agentRepository.save(agent));
+    const savedAgent = await this.agentRepository.save(agent);
+    savedAgent.llmModelConfig = model ?? undefined;
+
+    return new AgentResponseDto(savedAgent);
   }
 
   async findAll(
@@ -84,9 +92,19 @@ export class AgentService {
       await this.ensureUniqueCode(updater, updateAgentDto.agentCode);
     }
 
+    const model = await this.resolveOwnedModel(
+      updateAgentDto.llmModelId,
+      updater,
+    );
     Object.assign(agent, updateAgentDto, {
       updatedBy: updater,
     });
+
+    if (updateAgentDto.llmModelId !== undefined) {
+      agent.llmModelId = model?.id ?? null;
+      agent.llmModel = model?.modelCode ?? '';
+      agent.llmModelConfig = model ?? undefined;
+    }
 
     return new AgentResponseDto(await this.agentRepository.save(agent));
   }
@@ -440,6 +458,38 @@ export class AgentService {
     if (!project) {
       throw new NotFoundException('Project not found');
     }
+  }
+
+  private async resolveOwnedModel(
+    modelId: string | null | undefined,
+    creator: string,
+  ): Promise<LlmModel | null> {
+    if (!modelId) {
+      return null;
+    }
+
+    const model = await this.agentRepository.findOwnedModel(modelId, creator);
+
+    if (!model) {
+      throw new NotFoundException('Model not found');
+    }
+
+    return model;
+  }
+
+  private withModelDefaults(
+    dto: CreateAgentDto,
+    model: LlmModel | null,
+  ): CreateAgentDto {
+    if (!model) {
+      return dto;
+    }
+
+    return {
+      ...dto,
+      llmModel: model.modelCode,
+      maxContextLength: dto.maxContextLength ?? model.contextWindow,
+    };
   }
 
   private async ensureUniqueCode(

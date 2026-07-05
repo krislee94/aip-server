@@ -23,13 +23,17 @@ export function AgentsTab({ app }: AgentsTabProps) {
     <>
       <MetricGrid
         metrics={[
-          { label: '智能体数量', value: app.agents.length },
-          { label: '可用智能体', value: app.enabledAgentsCount },
-          { label: '当前智能体', value: app.selectedAgent?.agentName ?? '-' },
+          { label: '智能体数量', value: app.agents.length, tone: 'accent' },
+          { label: '可用智能体', value: app.enabledAgentsCount, tone: 'success' },
+          {
+            label: '当前智能体',
+            value: app.selectedAgent?.agentName ?? '-',
+            tone: 'warning',
+          },
         ]}
       />
 
-      <section className="agent-management-layout">
+      <section className="agent-management-layout section-gap">
         <form className="panel-form" onSubmit={app.handleAgentSubmit}>
           <h2>{app.editingAgentId ? '编辑智能体' : '创建智能体'}</h2>
           <label>
@@ -130,18 +134,23 @@ export function AgentsTab({ app }: AgentsTabProps) {
               </select>
             </label>
             <label>
-              模型
-              <input
-                maxLength={128}
+              LLM 模型
+              <select
                 onChange={(event) =>
                   app.setAgentForm((current) => ({
                     ...current,
-                    llmModel: event.target.value,
+                    llmModelId: event.target.value,
                   }))
                 }
-                placeholder="例如 gpt-4.1-mini"
-                value={app.agentForm.llmModel}
-              />
+                value={app.agentForm.llmModelId}
+              >
+                <option value="">不绑定模型</option>
+                {app.models.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.modelName} / {model.modelCode}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -218,7 +227,7 @@ export function AgentsTab({ app }: AgentsTabProps) {
         </form>
 
         <section className="agent-list" aria-label="智能体列表">
-          {app.isAgentLoading ? <EmptyState>加载智能体中</EmptyState> : null}
+          {app.isAgentLoading ? <EmptyState>正在加载智能体</EmptyState> : null}
           {!app.isAgentLoading && app.agents.length === 0 ? (
             <EmptyState>暂无智能体</EmptyState>
           ) : null}
@@ -250,7 +259,7 @@ export function AgentsTab({ app }: AgentsTabProps) {
                 </div>
                 <div>
                   <dt>模型</dt>
-                  <dd>{agent.llmModel || '-'}</dd>
+                  <dd>{agent.model?.modelName || agent.llmModel || '-'}</dd>
                 </div>
               </dl>
               <div className="row-actions">
@@ -283,7 +292,7 @@ export function AgentsTab({ app }: AgentsTabProps) {
 
 function AgentRelationsPanel({ app }: AgentsTabProps) {
   return (
-    <section className="binding-panel" aria-label="子 Agent 绑定管理">
+    <section className="binding-panel section-gap" aria-label="子 Agent 绑定管理">
       <form className="inline-form" onSubmit={app.handleAgentRelationBind}>
         <h2>绑定子 Agent</h2>
         <AgentSelector app={app} />

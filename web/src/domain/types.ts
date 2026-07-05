@@ -11,6 +11,8 @@ export type DetailTab = 'agents' | 'mcp' | 'prompts' | 'skills';
 export type McpStatus = 'disabled' | 'enabled';
 export type McpTransportType = 'http' | 'sse' | 'stdio';
 export type AuthMode = 'login' | 'register';
+export type ModelStatus = 0 | 1 | 2;
+export type ModelType = 1 | 2 | 3 | 4;
 export type ProjectStatus = 'active' | 'archived' | 'draft';
 export type SkillStatus = 'disabled' | 'enabled';
 export type SkillType =
@@ -18,7 +20,7 @@ export type SkillType =
   | 'custom_script'
   | 'database_query'
   | 'http_api';
-export type View = 'agent' | 'home' | 'projects';
+export type View = 'agent' | 'home' | 'models' | 'projects';
 
 export interface AuthUser {
   email: string;
@@ -54,7 +56,9 @@ export interface Agent {
   createdBy: string;
   id: string;
   llmModel: string;
+  llmModelId?: string | null;
   maxContextLength: number;
+  model?: LlmModel;
   projectId: string;
   publishingChannel: string;
   runMode: AgentRunMode;
@@ -64,6 +68,28 @@ export interface Agent {
   updatedAt: string;
   updatedBy?: string | null;
   version: string;
+}
+
+export interface LlmModel {
+  apiKeyRef: string;
+  baseUrl: string;
+  contextWindow: number;
+  createdAt: string;
+  createdBy: string;
+  defaultParams?: string | null;
+  hasSecretKey: boolean;
+  id: string;
+  modelCode: string;
+  modelName: string;
+  modelType: ModelType;
+  priceInput: string;
+  priceOutput: string;
+  status: ModelStatus;
+  supportFunctionCall: boolean;
+  supportStream: boolean;
+  updatedAt: string;
+  updatedBy?: string | null;
+  vendor: string;
 }
 
 export interface AgentPrompt {
@@ -142,11 +168,29 @@ export interface AgentForm {
   agentName: string;
   agentType: AgentType;
   llmModel: string;
+  llmModelId: string;
   maxContextLength: number;
   runMode: AgentRunMode;
   status: AgentStatus;
   supportsSubAgents: boolean;
   timeoutSeconds: number;
+}
+
+export interface ModelForm {
+  apiKeyRef: string;
+  baseUrl: string;
+  contextWindow: number;
+  defaultParams: string;
+  modelCode: string;
+  modelName: string;
+  modelType: ModelType;
+  priceInput: string;
+  priceOutput: string;
+  secretKey: string;
+  status: ModelStatus;
+  supportFunctionCall: boolean;
+  supportStream: boolean;
+  vendor: string;
 }
 
 export interface PromptForm {

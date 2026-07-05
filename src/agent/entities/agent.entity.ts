@@ -11,6 +11,7 @@ import {
 
 import { Project } from '../../project/entities/project.entity';
 import { User } from '../../users/entities/user.entity';
+import { LlmModel } from '../../model/entities/model.entity';
 import { AgentPrompt } from './agent-prompt.entity';
 
 export enum AgentRunMode {
@@ -101,6 +102,17 @@ export class Agent {
 
   @Column({ default: '', length: 128, name: 'llm_model' })
   llmModel: string;
+
+  @Index('IDX_agent_main_llm_model')
+  @Column({ name: 'llm_model_id', nullable: true, type: 'uuid' })
+  llmModelId?: string | null;
+
+  @ManyToOne(() => LlmModel, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({
+    foreignKeyConstraintName: 'FK_agent_main_llm_model',
+    name: 'llm_model_id',
+  })
+  llmModelConfig?: LlmModel;
 
   @Column({ default: '', length: 128, name: 'api_key_ref' })
   apiKeyRef: string;

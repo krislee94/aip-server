@@ -1,4 +1,5 @@
 import { Agent } from '../entities/agent.entity';
+import { ModelResponseDto } from '../../model/dto/model-response.dto';
 
 export class AgentResponseDto {
   agentCode: string;
@@ -11,7 +12,9 @@ export class AgentResponseDto {
   createdBy: string;
   id: string;
   llmModel: string;
+  llmModelId?: string | null;
   maxContextLength: number;
+  model?: ModelResponseDto;
   projectId: string;
   publishingChannel: string;
   runMode: Agent['runMode'];
@@ -33,7 +36,11 @@ export class AgentResponseDto {
     this.createdBy = agent.createdBy;
     this.id = agent.id;
     this.llmModel = agent.llmModel;
+    this.llmModelId = agent.llmModelId;
     this.maxContextLength = agent.maxContextLength;
+    this.model = agent.llmModelConfig
+      ? new ModelResponseDto(agent.llmModelConfig)
+      : undefined;
     this.projectId = agent.projectId;
     this.publishingChannel = agent.publishingChannel;
     this.runMode = agent.runMode;

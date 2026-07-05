@@ -3,5 +3,10 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ children }: EmptyStateProps) {
-  return <div className="empty-state">{children}</div>;
+  return (
+    <div className="empty-state">
+      <span aria-hidden="true" />
+      <p>{children}</p>
+    </div>
+  );
 }

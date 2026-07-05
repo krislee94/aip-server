@@ -4,6 +4,7 @@ import { FindOptionsWhere, Repository } from 'typeorm';
 
 import { McpServer } from '../mcp/entities/mcp.entity';
 import { AgentMcpRel } from '../mcp/entities/agent-mcp-rel.entity';
+import { LlmModel } from '../model/entities/model.entity';
 import { Project } from '../project/entities/project.entity';
 import { Skill } from '../skills/entities/skill.entity';
 import { AgentSkillRel } from '../skills/entities/agent-skill-rel.entity';
@@ -35,6 +36,8 @@ export class AgentRepository {
     private readonly agentMcpRelRepository: Repository<AgentMcpRel>,
     @InjectRepository(AgentRel)
     private readonly agentRelRepository: Repository<AgentRel>,
+    @InjectRepository(LlmModel)
+    private readonly modelRepository: Repository<LlmModel>,
   ) {}
 
   create(dto: CreateAgentDto, creator: string, agentCode: string): Agent {
@@ -60,6 +63,9 @@ export class AgentRepository {
       order: {
         createdAt: 'DESC',
       },
+      relations: {
+        llmModelConfig: true,
+      },
       where,
     });
   }
@@ -76,6 +82,9 @@ export class AgentRepository {
 
   findOneByIdAndOwner(id: string, creator: string): Promise<Agent | null> {
     return this.repository.findOne({
+      relations: {
+        llmModelConfig: true,
+      },
       where: {
         createdBy: creator,
         id,
@@ -89,6 +98,16 @@ export class AgentRepository {
       where: {
         createdBy: creator,
         id,
+      },
+    });
+  }
+
+  findOwnedModel(id: string, creator: string): Promise<LlmModel | null> {
+    return this.modelRepository.findOne({
+      where: {
+        createdBy: creator,
+        id,
+        isDeleted: false,
       },
     });
   }

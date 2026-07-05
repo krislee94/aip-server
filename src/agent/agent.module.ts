@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AgentMcpRel } from '../mcp/entities/agent-mcp-rel.entity';
 import { McpServer } from '../mcp/entities/mcp.entity';
+import { LlmModel } from '../model/entities/model.entity';
 import { Project } from '../project/entities/project.entity';
 import { AgentSkillRel } from '../skills/entities/agent-skill-rel.entity';
 import { Skill } from '../skills/entities/skill.entity';
@@ -26,6 +27,7 @@ import { Agent } from './entities/agent.entity';
       AgentSkillRel,
       McpServer,
       AgentMcpRel,
+      LlmModel,
     ]),
   ],
   controllers: [AgentController],
